@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager / Build Artifacts
+/.build/
+/.swiftpm/
+/Packages/
+
+# Xcode
+DerivedData/
+*.xcworkspace
+*.xcodeproj
+
+# Editor / IDE
+.idea/
+.vs/
+.vscode/
+
+
+# Trae / tooling metadata
+.trae/
+
