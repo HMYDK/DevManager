@@ -12,7 +12,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "DevManager",
-            path: "Sources/DevManager"
+            path: "Sources/DevManager",
+            resources: [
+                .process("Resources")
+            ]
         )
     ]
 )

@@ -1,6 +1,29 @@
 import AppKit
 import SwiftUI
 
+// MARK: - Language Icon View
+
+struct LanguageIconView: View {
+    let imageName: String
+    let size: CGFloat
+
+    var body: some View {
+        if let url = Bundle.module.url(forResource: imageName, withExtension: "png"),
+            let nsImage = NSImage(contentsOf: url)
+        {
+            Image(nsImage: nsImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: size, height: size)
+        } else {
+            Image(systemName: "questionmark.circle")
+                .font(.system(size: size * 0.8))
+                .foregroundColor(.secondary)
+                .frame(width: size, height: size)
+        }
+    }
+}
+
 // MARK: - Modern Card-based Version Display
 
 struct ModernVersionCard: View {
@@ -8,7 +31,7 @@ struct ModernVersionCard: View {
     let source: String
     let path: String
     let isActive: Bool
-    let icon: String
+    let iconImage: String
     let color: Color
     let onUse: () -> Void
     let onOpenFinder: () -> Void
@@ -26,9 +49,7 @@ struct ModernVersionCard: View {
                         .fill(isActive ? color.opacity(0.2) : Color.gray.opacity(0.1))
                         .frame(width: 48, height: 48)
 
-                    Image(systemName: icon)
-                        .font(.system(size: 24))
-                        .foregroundColor(isActive ? color : (isHovered ? color : .gray))
+                    LanguageIconView(imageName: iconImage, size: 28)
                 }
 
                 // Version info
@@ -316,7 +337,7 @@ struct ConfigHintView: View {
 
 struct ModernHeaderView: View {
     let title: String
-    let icon: String
+    let iconImage: String
     let color: Color
     let activeVersion: String?
     let activeSource: String?
@@ -326,9 +347,7 @@ struct ModernHeaderView: View {
         VStack(alignment: .leading, spacing: 16) {
             // Title with icon
             HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 28))
-                    .foregroundColor(color)
+                LanguageIconView(imageName: iconImage, size: 32)
 
                 Text(title)
                     .font(.title)
@@ -426,7 +445,7 @@ struct ModernHeaderView: View {
 // MARK: - Modern Empty State
 
 struct ModernEmptyState: View {
-    let icon: String
+    let iconImage: String
     let title: String
     let message: String
     let color: Color
@@ -434,9 +453,8 @@ struct ModernEmptyState: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Image(systemName: icon)
-                .font(.system(size: 60))
-                .foregroundColor(.secondary.opacity(0.5))
+            LanguageIconView(imageName: iconImage, size: 60)
+                .opacity(0.5)
 
             Text(title)
                 .font(.headline)

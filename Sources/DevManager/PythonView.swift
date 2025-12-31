@@ -1,38 +1,38 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct PythonView: View {
     @ObservedObject var manager: PythonManager
-    
+
     private var displayedVersions: [PythonVersion] {
         var sorted = manager.installedVersions.sorted { lhs, rhs in
             compareVersionDescending(lhs.version, rhs.version)
         }
-        
+
         if let active = manager.activeVersion {
             sorted.removeAll(where: { $0.id == active.id })
             return [active] + sorted
         }
-        
+
         return sorted
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Modern header
             ModernHeaderView(
                 title: "Python",
-                icon: "p.circle",
+                iconImage: "python",
                 color: .indigo,
                 activeVersion: manager.activeVersion?.version,
                 activeSource: manager.activeVersion?.source,
                 activePath: manager.activeVersion?.path
             )
-            
+
             // Content area
             if manager.installedVersions.isEmpty {
                 ModernEmptyState(
-                    icon: "p.circle",
+                    iconImage: "python",
                     title: "No Python Versions Found",
                     message: "Install via Homebrew, pyenv, or asdf, then refresh.",
                     color: .indigo,
@@ -41,7 +41,7 @@ struct PythonView: View {
             } else {
                 cardsGrid
             }
-            
+
             // Config hint at bottom
             ConfigHintView(filename: "python_env.sh")
         }
@@ -57,7 +57,7 @@ struct PythonView: View {
             }
         }
     }
-    
+
     private var cardsGrid: some View {
         ScrollView {
             LazyVGrid(
@@ -72,7 +72,7 @@ struct PythonView: View {
                         source: version.source,
                         path: version.path,
                         isActive: manager.activeVersion?.id == version.id,
-                        icon: "p.circle",
+                        iconImage: "python",
                         color: .indigo,
                         onUse: {
                             withAnimation(.easeInOut(duration: 0.4)) {
@@ -92,4 +92,3 @@ struct PythonView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-

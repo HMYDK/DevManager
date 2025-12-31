@@ -1,38 +1,38 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct GoView: View {
     @ObservedObject var manager: GoManager
-    
+
     private var displayedVersions: [GoVersion] {
         var sorted = manager.installedVersions.sorted { lhs, rhs in
             compareVersionDescending(lhs.version, rhs.version)
         }
-        
+
         if let active = manager.activeVersion {
             sorted.removeAll(where: { $0.id == active.id })
             return [active] + sorted
         }
-        
+
         return sorted
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Modern header
             ModernHeaderView(
                 title: "Go",
-                icon: "g.circle",
+                iconImage: "go",
                 color: .cyan,
                 activeVersion: manager.activeVersion?.version,
                 activeSource: manager.activeVersion?.source,
                 activePath: manager.activeVersion?.path
             )
-            
+
             // Content area
             if manager.installedVersions.isEmpty {
                 ModernEmptyState(
-                    icon: "g.circle",
+                    iconImage: "go",
                     title: "No Go Versions Found",
                     message: "Install via Homebrew, gvm, or asdf, then refresh.",
                     color: .cyan,
@@ -41,7 +41,7 @@ struct GoView: View {
             } else {
                 cardsGrid
             }
-            
+
             // Config hint at bottom
             ConfigHintView(filename: "go_env.sh")
         }
@@ -57,7 +57,7 @@ struct GoView: View {
             }
         }
     }
-    
+
     private var cardsGrid: some View {
         ScrollView {
             LazyVGrid(
@@ -72,7 +72,7 @@ struct GoView: View {
                         source: version.source,
                         path: version.path,
                         isActive: manager.activeVersion?.id == version.id,
-                        icon: "g.circle",
+                        iconImage: "go",
                         color: .cyan,
                         onUse: {
                             withAnimation(.easeInOut(duration: 0.4)) {
@@ -92,4 +92,3 @@ struct GoView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-

@@ -1,38 +1,38 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct NodeView: View {
     @ObservedObject var manager: NodeManager
-    
+
     private var displayedVersions: [NodeVersion] {
         var sorted = manager.installedVersions.sorted { lhs, rhs in
             compareVersionDescending(lhs.version, rhs.version)
         }
-        
+
         if let active = manager.activeVersion {
             sorted.removeAll(where: { $0.id == active.id })
             return [active] + sorted
         }
-        
+
         return sorted
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Modern header
             ModernHeaderView(
                 title: "Node.js",
-                icon: "hexagon",
+                iconImage: "nodejs",
                 color: .green,
                 activeVersion: manager.activeVersion?.version,
                 activeSource: manager.activeVersion?.source,
                 activePath: manager.activeVersion?.path
             )
-            
+
             // Content area
             if manager.installedVersions.isEmpty {
                 ModernEmptyState(
-                    icon: "hexagon",
+                    iconImage: "nodejs",
                     title: "No Node.js Versions Found",
                     message: "Install via Homebrew or NVM, then refresh.",
                     color: .green,
@@ -41,7 +41,7 @@ struct NodeView: View {
             } else {
                 cardsGrid
             }
-            
+
             // Config hint at bottom
             ConfigHintView(filename: "node_env.sh")
         }
@@ -57,7 +57,7 @@ struct NodeView: View {
             }
         }
     }
-    
+
     private var cardsGrid: some View {
         ScrollView {
             LazyVGrid(
@@ -72,7 +72,7 @@ struct NodeView: View {
                         source: version.source,
                         path: version.path,
                         isActive: manager.activeVersion?.id == version.id,
-                        icon: "hexagon",
+                        iconImage: "nodejs",
                         color: .green,
                         onUse: {
                             withAnimation(.easeInOut(duration: 0.4)) {

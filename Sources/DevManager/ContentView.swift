@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum NavigationItem: String, CaseIterable, Identifiable {
@@ -5,9 +6,9 @@ enum NavigationItem: String, CaseIterable, Identifiable {
     case node
     case python
     case go
-    
+
     var id: String { rawValue }
-    
+
     var title: String {
         switch self {
         case .java: return "Java JDK"
@@ -16,16 +17,16 @@ enum NavigationItem: String, CaseIterable, Identifiable {
         case .go: return "Go"
         }
     }
-    
-    var icon: String {
+
+    var iconImage: String {
         switch self {
-        case .java: return "cup.and.saucer"
-        case .node: return "hexagon"
-        case .python: return "p.circle"
-        case .go: return "g.circle"
+        case .java: return "java"
+        case .node: return "nodejs"
+        case .python: return "python"
+        case .go: return "go"
         }
     }
-    
+
     var color: Color {
         switch self {
         case .java: return .orange
@@ -41,10 +42,10 @@ struct ContentView: View {
     @ObservedObject var nodeManager: NodeManager
     @ObservedObject var pythonManager: PythonManager
     @ObservedObject var goManager: GoManager
-    
+
     @State private var selection: NavigationItem? = .java
     @State private var hoveredItem: NavigationItem? = nil
-    
+
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
@@ -52,11 +53,16 @@ struct ContentView: View {
                     ForEach(NavigationItem.allCases) { item in
                         NavigationLink(value: item) {
                             HStack(spacing: 10) {
-                                Image(systemName: item.icon)
-                                    .font(.system(size: 18))
-                                    .foregroundColor(selection == item ? item.color : .secondary)
-                                    .frame(width: 24)
-                                
+                                if let url = Bundle.module.url(
+                                    forResource: item.iconImage, withExtension: "png"),
+                                    let nsImage = NSImage(contentsOf: url)
+                                {
+                                    Image(nsImage: nsImage)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 20, height: 20)
+                                }
+
                                 Text(item.title)
                                     .font(.body)
                                     .fontWeight(.medium)
@@ -66,8 +72,9 @@ struct ContentView: View {
                         .listRowBackground(
                             ZStack {
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill(selection == item ? item.color.opacity(0.15) : Color.clear)
-                                
+                                    .fill(
+                                        selection == item ? item.color.opacity(0.15) : Color.clear)
+
                                 if selection == item {
                                     HStack {
                                         Rectangle()
