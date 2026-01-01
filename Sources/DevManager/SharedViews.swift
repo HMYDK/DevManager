@@ -513,6 +513,7 @@ struct ModernEmptyState: View {
     let message: String
     let color: Color
     let onRefresh: () -> Void
+    var onInstallNew: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 20) {
@@ -528,18 +529,35 @@ struct ModernEmptyState: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
 
-            Button(action: onRefresh) {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 14))
-                    Text("Refresh")
-                        .fontWeight(.medium)
+            VStack(spacing: 12) {
+                Button(action: onRefresh) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 14))
+                        Text("Refresh")
+                            .fontWeight(.medium)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 8)
+                .buttonStyle(.bordered)
+                .tint(color)
+                
+                if let installAction = onInstallNew {
+                    Button(action: installAction) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 14))
+                            Text("Install New Version")
+                                .fontWeight(.medium)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(color)
+                }
             }
-            .buttonStyle(.bordered)
-            .tint(color)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(40)
@@ -639,5 +657,54 @@ struct UninstallConfirmationDialog: View {
         }
         .padding(24)
         .frame(width: 400)
+    }
+}
+
+// MARK: - Version Action Bar
+
+struct VersionActionBar: View {
+    let installedCount: Int
+    let color: Color
+    let onInstallNew: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // 统计信息
+            HStack(spacing: 6) {
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                
+                Text("\(installedCount) version\(installedCount == 1 ? "" : "s") installed")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            // 新增按钮
+            Button(action: onInstallNew) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 16))
+                    Text("Install New Version")
+                        .fontWeight(.medium)
+                }
+                .font(.callout)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(color)
+            .help("Install new version")
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
+        .frame(height: 52)
+        .background(.ultraThinMaterial)
+        .overlay(
+            Rectangle()
+                .fill(Color.gray.opacity(0.15))
+                .frame(height: 1),
+            alignment: .bottom
+        )
     }
 }

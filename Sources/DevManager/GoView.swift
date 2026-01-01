@@ -8,6 +8,7 @@ struct GoView: View {
     @State private var showUninstallConfirmation = false
     @State private var isUninstalling = false
     @State private var uninstallingVersionId: UUID?
+    @State private var showVersionManager = false
 
     private var displayedVersions: [GoVersion] {
         var sorted = manager.installedVersions.sorted { lhs, rhs in
@@ -41,9 +42,17 @@ struct GoView: View {
                     title: "No Go Versions Found",
                     message: "Install via Homebrew, gvm, or asdf, then refresh.",
                     color: .cyan,
-                    onRefresh: { manager.refresh() }
+                    onRefresh: { manager.refresh() },
+                    onInstallNew: { showVersionManager = true }
                 )
             } else {
+                // 操作栏
+                VersionActionBar(
+                    installedCount: manager.installedVersions.count,
+                    color: .cyan,
+                    onInstallNew: { showVersionManager = true }
+                )
+                
                 cardsGrid
             }
 
@@ -52,11 +61,7 @@ struct GoView: View {
         }
         .navigationTitle("Go")
         .toolbar {
-            ToolbarItemGroup {
-                ManageVersionsButton(language: .go) {
-                    manager.refresh()
-                }
-
+            ToolbarItem {
                 Button {
                     manager.refresh()
                 } label: {
@@ -64,6 +69,13 @@ struct GoView: View {
                 }
                 .help("Refresh")
             }
+        }
+        .sheet(isPresented: $showVersionManager) {
+            VersionManagerSheet(
+                viewModel: VersionInstallViewModel(language: .go),
+                onDismiss: { showVersionManager = false },
+                onComplete: { manager.refresh() }
+            )
         }
     }
 

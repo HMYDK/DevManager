@@ -114,22 +114,37 @@ struct VersionManagerSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            HStack {
-                Text("Manage Versions")
-                    .font(.headline)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Manage Versions")
+                            .font(.title2)
+                            .fontWeight(.bold)
 
-                Spacer()
+                        Text("Install or uninstall via Homebrew")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
 
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.secondary)
+                    Spacer()
+
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(viewModel.isInstalling)
                 }
-                .buttonStyle(.plain)
-                .disabled(viewModel.isInstalling)
             }
-            .padding()
+            .padding(20)
             .background(.ultraThinMaterial)
+            .overlay(
+                Rectangle()
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(height: 1),
+                alignment: .bottom
+            )
 
             Divider()
 
@@ -163,42 +178,54 @@ struct VersionManagerSheet: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 // 版本列表
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(viewModel.remoteVersions) { version in
-                            RemoteVersionRow(
-                                version: version,
-                                isOperating: viewModel.isInstalling,
-                                onInstall: {
-                                    Task {
-                                        showProgress = true
-                                        let success = await viewModel.install(version: version)
-                                        if success {
-                                            await viewModel.fetchVersions()
-                                            onComplete()
-                                        }
-                                    }
-                                },
-                                onUninstall: {
-                                    Task {
-                                        showProgress = true
-                                        let success = await viewModel.uninstall(version: version)
-                                        if success {
-                                            await viewModel.fetchVersions()
-                                            onComplete()
-                                        }
-                                    }
-                                }
-                            )
-                        }
+                if viewModel.remoteVersions.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "shippingbox")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary.opacity(0.5))
+
+                        Text("No versions available")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
                     }
-                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(viewModel.remoteVersions) { version in
+                                RemoteVersionRow(
+                                    version: version,
+                                    isOperating: viewModel.isInstalling,
+                                    onInstall: {
+                                        Task {
+                                            showProgress = true
+                                            let success = await viewModel.install(version: version)
+                                            if success {
+                                                await viewModel.fetchVersions()
+                                                onComplete()
+                                            }
+                                        }
+                                    },
+                                    onUninstall: {
+                                        Task {
+                                            showProgress = true
+                                            let success = await viewModel.uninstall(
+                                                version: version)
+                                            if success {
+                                                await viewModel.fetchVersions()
+                                                onComplete()
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                        .padding()
+                    }
                 }
 
                 // 操作进度区域
                 if viewModel.isInstalling || showProgress {
-                    Divider()
-
                     VStack(alignment: .leading, spacing: 12) {
                         if let operation = viewModel.currentOperation {
                             HStack(spacing: 8) {
@@ -227,6 +254,7 @@ struct VersionManagerSheet: View {
                                 ProgressView(value: progress, total: 100)
                                     .progressViewStyle(.linear)
                                     .tint(.blue)
+                                    .frame(height: 6)
                             }
                         }
 
@@ -246,17 +274,28 @@ struct VersionManagerSheet: View {
                                     }
                                 }
                             }
-                            .frame(height: 80)
+                            .frame(minHeight: 60, maxHeight: 120)
+                            .padding(12)
                             .background(Color(NSColor.textBackgroundColor).opacity(0.5))
                             .cornerRadius(8)
                         }
                     }
-                    .padding()
+                    .padding(20)
+                    .frame(minHeight: 120, maxHeight: 200)
                     .background(.ultraThinMaterial)
+                    .overlay(
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(height: 1),
+                        alignment: .top
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
         }
-        .frame(width: 500, height: 500)
+        .frame(minWidth: 750, idealWidth: 800, minHeight: 550, idealHeight: 650)
+        .animation(.easeInOut(duration: 0.3), value: viewModel.isInstalling)
+        .animation(.easeInOut(duration: 0.3), value: showProgress)
         .task {
             await viewModel.fetchVersions()
         }
@@ -271,15 +310,37 @@ struct RemoteVersionRow: View {
     let onInstall: () -> Void
     let onUninstall: () -> Void
 
+    @State private var isHovered = false
+
     var body: some View {
         HStack(spacing: 16) {
+            // 图标区域
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.green.opacity(0.1))
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: "cube.box.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(.green)
+            }
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(version.displayName)
                     .font(.headline)
+                    .fontWeight(.semibold)
 
                 Text(version.formula)
-                    .font(.caption)
+                    .font(.system(.caption, design: .monospaced))
                     .foregroundColor(.secondary)
+
+                // 描述信息
+                if !version.formula.isEmpty {
+                    Text("Homebrew formula")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
             }
 
             Spacer()
@@ -288,10 +349,10 @@ struct RemoteVersionRow: View {
                 HStack(spacing: 8) {
                     Text("Installed")
                         .font(.caption)
-                        .foregroundColor(.green)
+                        .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.green.opacity(0.1))
+                        .background(Color.green)
                         .cornerRadius(6)
 
                     Button(action: onUninstall) {
@@ -311,16 +372,28 @@ struct RemoteVersionRow: View {
                     .font(.callout)
                 }
                 .buttonStyle(.bordered)
+                .fixedSize()
                 .disabled(isOperating)
             }
         }
-        .padding()
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(10)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(
+                    isHovered
+                        ? Color(NSColor.controlBackgroundColor).opacity(1.2)
+                        : Color(NSColor.controlBackgroundColor))
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                .stroke(isHovered ? Color.gray.opacity(0.4) : Color.gray.opacity(0.2), lineWidth: 1)
         )
+        .shadow(color: isHovered ? Color.black.opacity(0.1) : Color.clear, radius: 6, y: 3)
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.25)) {
+                isHovered = hovering
+            }
+        }
     }
 }
 

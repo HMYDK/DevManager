@@ -8,6 +8,7 @@ struct PythonView: View {
     @State private var showUninstallConfirmation = false
     @State private var isUninstalling = false
     @State private var uninstallingVersionId: UUID?
+    @State private var showVersionManager = false
 
     private var displayedVersions: [PythonVersion] {
         var sorted = manager.installedVersions.sorted { lhs, rhs in
@@ -41,9 +42,17 @@ struct PythonView: View {
                     title: "No Python Versions Found",
                     message: "Install via Homebrew, pyenv, or asdf, then refresh.",
                     color: .indigo,
-                    onRefresh: { manager.refresh() }
+                    onRefresh: { manager.refresh() },
+                    onInstallNew: { showVersionManager = true }
                 )
             } else {
+                // 操作栏
+                VersionActionBar(
+                    installedCount: manager.installedVersions.count,
+                    color: .indigo,
+                    onInstallNew: { showVersionManager = true }
+                )
+                
                 cardsGrid
             }
 
@@ -52,11 +61,7 @@ struct PythonView: View {
         }
         .navigationTitle("Python")
         .toolbar {
-            ToolbarItemGroup {
-                ManageVersionsButton(language: .python) {
-                    manager.refresh()
-                }
-
+            ToolbarItem {
                 Button {
                     manager.refresh()
                 } label: {
@@ -64,6 +69,13 @@ struct PythonView: View {
                 }
                 .help("Refresh")
             }
+        }
+        .sheet(isPresented: $showVersionManager) {
+            VersionManagerSheet(
+                viewModel: VersionInstallViewModel(language: .python),
+                onDismiss: { showVersionManager = false },
+                onComplete: { manager.refresh() }
+            )
         }
     }
 

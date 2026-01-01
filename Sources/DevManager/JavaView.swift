@@ -8,6 +8,7 @@ struct JavaView: View {
     @State private var showUninstallConfirmation = false
     @State private var isUninstalling = false
     @State private var uninstallingVersionId: UUID?
+    @State private var showVersionManager = false
 
     private var displayedVersions: [JavaVersion] {
         var sorted = manager.installedVersions.sorted { lhs, rhs in
@@ -41,9 +42,17 @@ struct JavaView: View {
                     title: "No Java Versions Found",
                     message: "Install a JDK and click refresh.",
                     color: .orange,
-                    onRefresh: { manager.refresh() }
+                    onRefresh: { manager.refresh() },
+                    onInstallNew: { showVersionManager = true }
                 )
             } else {
+                // 操作栏
+                VersionActionBar(
+                    installedCount: manager.installedVersions.count,
+                    color: .orange,
+                    onInstallNew: { showVersionManager = true }
+                )
+                
                 cardsGrid
             }
 
@@ -52,11 +61,7 @@ struct JavaView: View {
         }
         .navigationTitle("Java")
         .toolbar {
-            ToolbarItemGroup {
-                ManageVersionsButton(language: .java) {
-                    manager.refresh()
-                }
-
+            ToolbarItem {
                 Button {
                     manager.refresh()
                 } label: {
@@ -64,6 +69,13 @@ struct JavaView: View {
                 }
                 .help("Refresh")
             }
+        }
+        .sheet(isPresented: $showVersionManager) {
+            VersionManagerSheet(
+                viewModel: VersionInstallViewModel(language: .java),
+                onDismiss: { showVersionManager = false },
+                onComplete: { manager.refresh() }
+            )
         }
     }
 

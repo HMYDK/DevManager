@@ -8,6 +8,7 @@ struct NodeView: View {
     @State private var showUninstallConfirmation = false
     @State private var isUninstalling = false
     @State private var uninstallingVersionId: UUID?
+    @State private var showVersionManager = false
 
     private var displayedVersions: [NodeVersion] {
         var sorted = manager.installedVersions.sorted { lhs, rhs in
@@ -41,9 +42,17 @@ struct NodeView: View {
                     title: "No Node.js Versions Found",
                     message: "Install via Homebrew or NVM, then refresh.",
                     color: .green,
-                    onRefresh: { manager.refresh() }
+                    onRefresh: { manager.refresh() },
+                    onInstallNew: { showVersionManager = true }
                 )
             } else {
+                // 操作栏
+                VersionActionBar(
+                    installedCount: manager.installedVersions.count,
+                    color: .green,
+                    onInstallNew: { showVersionManager = true }
+                )
+                
                 cardsGrid
             }
 
@@ -52,11 +61,7 @@ struct NodeView: View {
         }
         .navigationTitle("Node.js")
         .toolbar {
-            ToolbarItemGroup {
-                ManageVersionsButton(language: .node) {
-                    manager.refresh()
-                }
-
+            ToolbarItem {
                 Button {
                     manager.refresh()
                 } label: {
@@ -64,6 +69,13 @@ struct NodeView: View {
                 }
                 .help("Refresh")
             }
+        }
+        .sheet(isPresented: $showVersionManager) {
+            VersionManagerSheet(
+                viewModel: VersionInstallViewModel(language: .node),
+                onDismiss: { showVersionManager = false },
+                onComplete: { manager.refresh() }
+            )
         }
     }
 
