@@ -171,4 +171,78 @@ class GoManager: ObservableObject {
             print("Error setting active go version: \(error)")
         }
     }
+    
+    // MARK: - 卸载功能
+    
+    func canUninstall(_ version: GoVersion) -> Bool {
+        // 【核心安全约束】不能卸载当前激活的版本
+        if activeVersion?.id == version.id {
+            return false
+        }
+        
+        // 系统版本不允许卸载
+        if version.source.lowercased() == "system" {
+            return false
+        }
+        
+        // 判断是否为 Homebrew 安装或版本管理工具安装
+        let isHomebrew = BrewService.shared.isHomebrewInstalled(path: version.path)
+        let isGvm = version.source == "gvm" && VersionRemovalService.shared.isPathAllowedForRemoval(path: version.path, language: .go)
+        let isAsdf = version.source == "asdf" && VersionRemovalService.shared.isPathAllowedForRemoval(path: version.path, language: .go)
+        
+        return isHomebrew || isGvm || isAsdf
+    }
+    
+    func uninstall(_ version: GoVersion, onOutput: @escaping (String) -> Void) async -> Bool {
+        // 【核心安全约束】验证不是当前激活版本
+        guard activeVersion?.id != version.id else {
+            await MainActor.run {
+                onOutput("错误：无法删除当前激活版本")
+            }
+            return false
+        }
+        
+        // 系统版本不允许删除
+        guard version.source.lowercased() != "system" else {
+            await MainActor.run {
+                onOutput("错误：不允许删除系统版本")
+            }
+            return false
+        }
+        
+        let success: Bool
+        
+        // 根据版本来源选择删除方式
+        if BrewService.shared.isHomebrewInstalled(path: version.path) {
+            // Homebrew 版本：使用 brew uninstall
+            guard let formula = BrewService.shared.getFormulaName(from: version.path) else {
+                await MainActor.run {
+                    onOutput("错误：无法确定 Homebrew formula 名称")
+                }
+                return false
+            }
+            success = await BrewService.shared.uninstall(formula: formula, onOutput: onOutput)
+        } else if version.source == "gvm" || version.source == "asdf" {
+            // gvm/asdf 版本：使用目录删除
+            success = await VersionRemovalService.shared.removeVersionDirectory(
+                path: version.path,
+                language: .go,
+                onOutput: onOutput
+            )
+        } else {
+            await MainActor.run {
+                onOutput("错误：不支持的版本类型")
+            }
+            return false
+        }
+        
+        if success {
+            // 删除成功后刷新版本列表
+            await MainActor.run {
+                self.refresh()
+            }
+        }
+        
+        return success
+    }
 }

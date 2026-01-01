@@ -171,7 +171,29 @@ class BrewService {
 
     /// 卸载指定 formula
     func uninstall(formula: String, onOutput: @escaping (String) -> Void) async -> Bool {
-        await runBrewCommand(["uninstall", formula], onOutput: onOutput)
+        // 使用 --ignore-dependencies 避免因依赖关系导致卸载失败
+        await runBrewCommand(["uninstall", "--ignore-dependencies", formula], onOutput: onOutput)
+    }
+
+    /// 获取通过路径推断的 formula 名称
+    func getFormulaName(from path: String) -> String? {
+        // 从路径中提取 formula 名称
+        // 例如: /opt/homebrew/Cellar/node@20/20.x.x -> node@20
+        //      /opt/homebrew/Cellar/openjdk@17/17.x.x -> openjdk@17
+        if path.contains("/Cellar/") {
+            let components = path.components(separatedBy: "/Cellar/")
+            if components.count > 1 {
+                let formulaPath = components[1]
+                let formulaName = formulaPath.components(separatedBy: "/").first
+                return formulaName
+            }
+        }
+        return nil
+    }
+
+    /// 判断指定路径是否为 Homebrew 安装
+    func isHomebrewInstalled(path: String) -> Bool {
+        return path.contains("/opt/homebrew/") || path.contains("/usr/local/Cellar/")
     }
 
     // MARK: - 私有方法

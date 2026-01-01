@@ -71,6 +71,9 @@ struct ModernVersionCard: View {
     let color: Color
     let onUse: () -> Void
     let onOpenFinder: () -> Void
+    var canUninstall: Bool = false
+    var onUninstall: (() -> Void)? = nil
+    var isUninstalling: Bool = false
 
     @State private var isHovered = false
     @State private var showCopied = false
@@ -125,6 +128,7 @@ struct ModernVersionCard: View {
                         }
                         .buttonStyle(.bordered)
                         .tint(color)
+                        .disabled(isUninstalling)
 
                         Button(action: onOpenFinder) {
                             Image(systemName: "folder")
@@ -132,8 +136,26 @@ struct ModernVersionCard: View {
                         }
                         .buttonStyle(.borderless)
                         .foregroundColor(.secondary)
+                        .disabled(isUninstalling)
+                        
+                        if canUninstall, let uninstallAction = onUninstall {
+                            Button(action: uninstallAction) {
+                                if isUninstalling {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                        .frame(width: 14, height: 14)
+                                } else {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 14))
+                                }
+                            }
+                            .buttonStyle(.borderless)
+                            .foregroundColor(isUninstalling ? .secondary : .red)
+                            .disabled(isUninstalling)
+                            .help("Uninstall")
+                        }
                     }
-                    .opacity(isHovered ? 1 : 0)
+                    .opacity(isHovered || isUninstalling ? 1 : 0)
                 }
             }
             .padding(16)
@@ -202,7 +224,7 @@ struct ModernVersionCard: View {
             Button("Use This Version") {
                 onUse()
             }
-            .disabled(isActive)
+            .disabled(isActive || isUninstalling)
 
             Button("Copy Path") {
                 NSPasteboard.general.clearContents()
@@ -211,6 +233,15 @@ struct ModernVersionCard: View {
 
             Button("Reveal in Finder") {
                 onOpenFinder()
+            }
+            
+            if canUninstall, let uninstallAction = onUninstall {
+                Divider()
+                
+                Button("Uninstall Version") {
+                    uninstallAction()
+                }
+                .disabled(isActive || isUninstalling)
             }
         }
     }
@@ -512,5 +543,101 @@ struct ModernEmptyState: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(40)
+    }
+}
+
+// MARK: - Uninstall Confirmation Dialog
+
+struct UninstallConfirmationDialog: View {
+    let version: String
+    let source: String
+    let path: String
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            // Icon and Title
+            VStack(spacing: 12) {
+                Image(systemName: "trash.circle.fill")
+                    .font(.system(size: 48))
+                    .foregroundColor(.red)
+                
+                Text("Confirm Uninstall")
+                    .font(.title2)
+                    .fontWeight(.bold)
+            }
+            
+            // Version Information
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Text("Version:")
+                        .font(.callout)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                    Text(version)
+                        .font(.callout)
+                        .fontWeight(.medium)
+                }
+                
+                HStack(spacing: 8) {
+                    Text("Source:")
+                        .font(.callout)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                    Text(source)
+                        .font(.callout)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Path:")
+                        .font(.callout)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                    Text(path)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.red.opacity(0.05))
+            .cornerRadius(8)
+            
+            // Warning Message
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                Text("This action cannot be undone.")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity)
+            .background(Color.orange.opacity(0.1))
+            .cornerRadius(8)
+            
+            // Action Buttons
+            HStack(spacing: 12) {
+                Button(action: onCancel) {
+                    Text("Cancel")
+                        .frame(minWidth: 100)
+                }
+                .buttonStyle(.bordered)
+                .keyboardShortcut(.cancelAction)
+                
+                Button(action: onConfirm) {
+                    Text("Uninstall")
+                        .frame(minWidth: 100)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 400)
     }
 }

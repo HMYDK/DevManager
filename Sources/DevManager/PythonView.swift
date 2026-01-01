@@ -3,6 +3,11 @@ import SwiftUI
 
 struct PythonView: View {
     @ObservedObject var manager: PythonManager
+    
+    @State private var versionToUninstall: PythonVersion?
+    @State private var showUninstallConfirmation = false
+    @State private var isUninstalling = false
+    @State private var uninstallingVersionId: UUID?
 
     private var displayedVersions: [PythonVersion] {
         var sorted = manager.installedVersions.sorted { lhs, rhs in
@@ -87,12 +92,50 @@ struct PythonView: View {
                             NSWorkspace.shared.activateFileViewerSelecting(
                                 [URL(fileURLWithPath: version.path)]
                             )
-                        }
+                        },
+                        canUninstall: manager.canUninstall(version),
+                        onUninstall: {
+                            versionToUninstall = version
+                            showUninstallConfirmation = true
+                        },
+                        isUninstalling: uninstallingVersionId == version.id
                     )
                 }
             }
             .padding(24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .alert(isPresented: $showUninstallConfirmation) {
+            Alert(
+                title: Text("Confirm Uninstall"),
+                message: Text("Are you sure you want to uninstall \(versionToUninstall?.version ?? "this version")? This action cannot be undone."),
+                primaryButton: .destructive(Text("Uninstall")) {
+                    if let version = versionToUninstall {
+                        performUninstall(version)
+                    }
+                },
+                secondaryButton: .cancel()
+            )
+        }
+    }
+    
+    private func performUninstall(_ version: PythonVersion) {
+        isUninstalling = true
+        uninstallingVersionId = version.id
+        
+        Task {
+            let success = await manager.uninstall(version) { output in
+                print("Uninstall output: \(output)")
+            }
+            
+            await MainActor.run {
+                isUninstalling = false
+                uninstallingVersionId = nil
+                
+                if success {
+                    manager.refresh()
+                }
+            }
+        }
     }
 }

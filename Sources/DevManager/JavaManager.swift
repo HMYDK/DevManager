@@ -127,4 +127,67 @@ class JavaManager: ObservableObject {
             print("Error setting active version: \(error)")
         }
     }
+    
+    // MARK: - 卸载功能
+    
+    func canUninstall(_ version: JavaVersion) -> Bool {
+        // 【核心安全约束】不能卸载当前激活的版本
+        if activeVersion?.id == version.id {
+            return false
+        }
+        
+        // 系统路径不允许删除（/Library/Java/JavaVirtualMachines/）
+        if version.homePath.contains("/Library/Java/JavaVirtualMachines/") {
+            return false
+        }
+        
+        // 判断是否为 Homebrew 安装
+        return BrewService.shared.isHomebrewInstalled(path: version.homePath)
+    }
+    
+    func uninstall(_ version: JavaVersion, onOutput: @escaping (String) -> Void) async -> Bool {
+        // 【核心安全约束】验证不是当前激活版本
+        guard activeVersion?.id != version.id else {
+            await MainActor.run {
+                onOutput("错误：无法删除当前激活版本")
+            }
+            return false
+        }
+        
+        // 系统路径不允许删除
+        if version.homePath.contains("/Library/Java/JavaVirtualMachines/") {
+            await MainActor.run {
+                onOutput("错误：不允许删除系统路径下的 Java 版本")
+            }
+            return false
+        }
+        
+        let success: Bool
+        
+        // 根据版本来源选择删除方式
+        if BrewService.shared.isHomebrewInstalled(path: version.homePath) {
+            // Homebrew 版本：使用 brew uninstall
+            guard let formula = BrewService.shared.getFormulaName(from: version.homePath) else {
+                await MainActor.run {
+                    onOutput("错误：无法确定 Homebrew formula 名称")
+                }
+                return false
+            }
+            success = await BrewService.shared.uninstall(formula: formula, onOutput: onOutput)
+        } else {
+            await MainActor.run {
+                onOutput("错误：不支持的版本类型")
+            }
+            return false
+        }
+        
+        if success {
+            // 删除成功后刷新版本列表
+            await MainActor.run {
+                self.refresh()
+            }
+        }
+        
+        return success
+    }
 }
