@@ -21,6 +21,15 @@ class VersionInstallViewModel: ObservableObject {
         self.language = language
     }
 
+    var accentColor: Color {
+        switch language {
+        case .node: return .green
+        case .java: return .orange
+        case .python: return .indigo
+        case .go: return .cyan
+        }
+    }
+
     func fetchVersions() async {
         isLoading = true
         defer { isLoading = false }
@@ -110,6 +119,7 @@ struct VersionManagerSheet: View {
     let onComplete: () -> Void
 
     @State private var showProgress = false
+    @State private var searchText = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -128,6 +138,11 @@ struct VersionManagerSheet: View {
 
                     Spacer()
 
+                    TextField("Search", text: $searchText)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 240)
+                        .disabled(viewModel.isInstalling)
+
                     Button(action: onDismiss) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title2)
@@ -135,6 +150,7 @@ struct VersionManagerSheet: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(viewModel.isInstalling)
+                    .accessibilityLabel("Close")
                 }
             }
             .padding(20)
@@ -192,10 +208,11 @@ struct VersionManagerSheet: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            ForEach(viewModel.remoteVersions) { version in
+                            ForEach(filteredVersions) { version in
                                 RemoteVersionRow(
                                     version: version,
                                     isOperating: viewModel.isInstalling,
+                                    accent: viewModel.accentColor,
                                     onInstall: {
                                         Task {
                                             showProgress = true
@@ -227,6 +244,21 @@ struct VersionManagerSheet: View {
                 // 操作进度区域
                 if viewModel.isInstalling || showProgress {
                     VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Spacer()
+                            Button {
+                                showProgress = false
+                                viewModel.installProgress = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(viewModel.isInstalling)
+                            .accessibilityLabel("Close progress")
+                        }
+
                         if let operation = viewModel.currentOperation {
                             HStack(spacing: 8) {
                                 ProgressView()
@@ -253,7 +285,7 @@ struct VersionManagerSheet: View {
 
                                 ProgressView(value: progress, total: 100)
                                     .progressViewStyle(.linear)
-                                    .tint(.blue)
+                                    .tint(viewModel.accentColor)
                                     .frame(height: 6)
                             }
                         }
@@ -300,6 +332,16 @@ struct VersionManagerSheet: View {
             await viewModel.fetchVersions()
         }
     }
+
+    private var filteredVersions: [RemoteVersion] {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return viewModel.remoteVersions }
+
+        return viewModel.remoteVersions.filter { version in
+            version.displayName.localizedCaseInsensitiveContains(trimmed)
+                || version.formula.localizedCaseInsensitiveContains(trimmed)
+        }
+    }
 }
 
 // MARK: - 远程版本行
@@ -307,6 +349,7 @@ struct VersionManagerSheet: View {
 struct RemoteVersionRow: View {
     let version: RemoteVersion
     let isOperating: Bool
+    let accent: Color
     let onInstall: () -> Void
     let onUninstall: () -> Void
 
@@ -317,12 +360,12 @@ struct RemoteVersionRow: View {
             // 图标区域
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.green.opacity(0.1))
+                    .fill(accent.opacity(0.12))
                     .frame(width: 48, height: 48)
 
                 Image(systemName: "cube.box.fill")
                     .font(.system(size: 24))
-                    .foregroundColor(.green)
+                    .foregroundColor(accent)
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -352,7 +395,7 @@ struct RemoteVersionRow: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.green)
+                        .background(accent)
                         .cornerRadius(6)
 
                     Button(action: onUninstall) {

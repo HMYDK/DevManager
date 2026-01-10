@@ -52,8 +52,12 @@ struct ContentView: View {
     @ObservedObject var registry: LanguageRegistry
     @StateObject private var dashboardViewModel: DashboardViewModel
 
-    @State private var selection: String? = "dashboard"
-    @State private var hoveredItem: String? = nil
+    enum Route: Hashable {
+        case dashboard
+        case language(String)
+    }
+
+    @State private var selection: Route? = .dashboard
     
     init(registry: LanguageRegistry) {
         self.registry = registry
@@ -65,7 +69,7 @@ struct ContentView: View {
             List(selection: $selection) {
                 Section {
                     // Dashboard
-                    NavigationLink(value: "dashboard") {
+                    NavigationLink(value: Route.dashboard) {
                         HStack(spacing: 10) {
                             Image(systemName: "chart.bar.horizontal.fill")
                                 .font(.system(size: 16))
@@ -81,9 +85,9 @@ struct ContentView: View {
                         ZStack {
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(
-                                    selection == "dashboard" ? Color.blue.opacity(0.15) : Color.clear)
+                                    selection == .dashboard ? Color.blue.opacity(0.15) : Color.clear)
 
-                            if selection == "dashboard" {
+                            if selection == .dashboard {
                                 HStack {
                                     Rectangle()
                                         .fill(Color.blue)
@@ -98,7 +102,7 @@ struct ContentView: View {
                     // 语言项
                     ForEach(registry.allLanguages) { language in
                         let metadata = language.metadata
-                        NavigationLink(value: metadata.id) {
+                        NavigationLink(value: Route.language(metadata.id)) {
                             HStack(spacing: 10) {
                                 if let url = Bundle.module.url(
                                     forResource: metadata.iconName, withExtension: "png"),
@@ -120,9 +124,9 @@ struct ContentView: View {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(
-                                        selection == metadata.id ? metadata.color.opacity(0.15) : Color.clear)
+                                        selection == .language(metadata.id) ? metadata.color.opacity(0.15) : Color.clear)
 
-                                if selection == metadata.id {
+                                if selection == .language(metadata.id) {
                                     HStack {
                                         Rectangle()
                                             .fill(metadata.color)
@@ -147,13 +151,14 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(min: 200, ideal: 220)
             .navigationTitle("DevManager")
         } detail: {
-            if selection == "dashboard" {
+            if selection == .dashboard {
                 DashboardView(
                     viewModel: dashboardViewModel,
                     selection: $selection
                 )
-            } else if let languageId = selection,
-                      let language = registry.getLanguage(for: languageId) {
+            } else if case .language(let languageId) = selection,
+                      let language = registry.getLanguage(for: languageId)
+            {
                 GenericLanguageView(
                     metadata: language.metadata,
                     manager: language.manager

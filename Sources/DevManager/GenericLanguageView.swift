@@ -26,15 +26,7 @@ struct GenericLanguageView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Modern header
-            ModernHeaderView(
-                title: metadata.displayName,
-                iconImage: metadata.iconName,
-                color: metadata.color,
-                activeVersion: manager.activeVersion?.version,
-                activeSource: manager.activeVersion?.source,
-                activePath: manager.activeVersion?.path
-            )
+            header
 
             // Content area
             if manager.installedVersions.isEmpty {
@@ -54,7 +46,7 @@ struct GenericLanguageView: View {
                     onInstallNew: { showVersionManager = true }
                 )
                 
-                cardsGrid
+                versionsTable
             }
 
             // Config hint at bottom
@@ -69,6 +61,7 @@ struct GenericLanguageView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .help("Refresh")
+                .accessibilityLabel("Refresh versions")
             }
         }
         .sheet(isPresented: $showVersionManager) {
@@ -80,13 +73,11 @@ struct GenericLanguageView: View {
         }
     }
 
-    private var cardsGrid: some View {
+    private var versionsTable: some View {
         ScrollView {
             LazyVGrid(
-                columns: [
-                    GridItem(.adaptive(minimum: 280, maximum: 420), spacing: 20)
-                ],
-                spacing: 16
+                columns: [GridItem(.adaptive(minimum: 280, maximum: 380), spacing: DMSpace.l)],
+                spacing: DMSpace.l
             ) {
                 ForEach(displayedVersions) { version in
                     ModernVersionCard(
@@ -97,7 +88,7 @@ struct GenericLanguageView: View {
                         iconImage: metadata.iconName,
                         color: metadata.color,
                         onUse: {
-                            withAnimation(.easeInOut(duration: 0.4)) {
+                            withAnimation(.easeInOut(duration: 0.25)) {
                                 manager.setActive(version)
                             }
                         },
@@ -115,20 +106,19 @@ struct GenericLanguageView: View {
                     )
                 }
             }
-            .padding(24)
+            .padding(DMSpace.l)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .alert(isPresented: $showUninstallConfirmation) {
-            Alert(
-                title: Text("Confirm Uninstall"),
-                message: Text("Are you sure you want to uninstall \(versionToUninstall?.version ?? "this version")? This action cannot be undone."),
-                primaryButton: .destructive(Text("Uninstall")) {
-                    if let version = versionToUninstall {
-                        performUninstall(version)
-                    }
-                },
-                secondaryButton: .cancel()
-            )
+        .confirmationDialog(
+            "Confirm Uninstall",
+            isPresented: $showUninstallConfirmation,
+            presenting: versionToUninstall
+        ) { version in
+            Button("Uninstall \(version.version)", role: .destructive) {
+                performUninstall(version)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { version in
+            Text("Are you sure you want to uninstall \(version.version)? This action cannot be undone.")
         }
     }
     
@@ -137,9 +127,7 @@ struct GenericLanguageView: View {
         uninstallingVersionId = version.id
         
         Task {
-            let success = await manager.uninstall(version) { output in
-                print("Uninstall output: \(output)")
-            }
+            let success = await manager.uninstall(version) { _ in }
             
             await MainActor.run {
                 isUninstalling = false
@@ -161,5 +149,68 @@ struct GenericLanguageView: View {
         case "go": return .go
         default: return .java
         }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: DMSpace.l) {
+            HStack(spacing: DMSpace.m) {
+                LanguageIconView(imageName: metadata.iconName, size: 32)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(metadata.displayName)
+                        .font(DMTypography.title2)
+                    Text("Manage installed versions and your active environment")
+                        .font(DMTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+
+            DMCard(accent: metadata.color, isEmphasized: manager.activeVersion != nil) {
+                if let active = manager.activeVersion {
+                    VStack(alignment: .leading, spacing: DMSpace.s) {
+                        HStack(spacing: DMSpace.xs) {
+                            DMBadge(text: "Active", accent: metadata.color)
+                            Text(active.version)
+                                .font(DMTypography.section)
+                            Spacer()
+                        }
+
+                        DMKeyValueRow(
+                            key: "Source",
+                            value: active.source,
+                            onCopy: {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(active.source, forType: .string)
+                            }
+                        )
+
+                        DMKeyValueRow(
+                            key: "Path",
+                            value: active.path,
+                            isMonospaced: true,
+                            onCopy: {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(active.path, forType: .string)
+                            }
+                        )
+                    }
+                } else {
+                    HStack(spacing: DMSpace.s) {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("No active version")
+                                .font(DMTypography.section)
+                            Text("Select a version to generate environment configuration.")
+                                .font(DMTypography.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, DMSpace.xxl)
+        .padding(.vertical, DMSpace.xl)
     }
 }
