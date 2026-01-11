@@ -13,7 +13,7 @@ enum AppInfo {
 }
 
 @main
-struct DevManagerApp: App {
+struct RuntimePilotApp: App {
     @StateObject private var javaManager = JavaManager()
     @StateObject private var nodeManager = NodeManager()
     @StateObject private var pythonManager = PythonManager()
@@ -47,10 +47,10 @@ struct DevManagerApp: App {
 
             // About 菜单
             CommandGroup(replacing: .appInfo) {
-                Button("About DevManager") {
+                Button("About RuntimePilot") {
                     NSApplication.shared.orderFrontStandardAboutPanel(
                         options: [
-                            .applicationName: "DevManager",
+                            .applicationName: "RuntimePilot",
                             .applicationVersion: AppInfo.version,
                             .credits: NSAttributedString(string: "Development Environment Manager"),
                         ]

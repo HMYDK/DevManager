@@ -156,7 +156,7 @@ struct ContentView: View {
             }
             .listStyle(.sidebar)
             .navigationSplitViewColumnWidth(min: 200, ideal: 220)
-            .navigationTitle("DevManager")
+            .navigationTitle("RuntimePilot")
         } detail: {
             if selection == .dashboard {
                 DashboardView(

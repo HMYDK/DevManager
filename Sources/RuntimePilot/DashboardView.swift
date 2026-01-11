@@ -27,7 +27,7 @@ struct DashboardView: View {
                                 .frame(width: 20)
 
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Welcome to DevManager")
+                                Text("Welcome to RuntimePilot")
                                     .font(DMTypography.section)
                                 Text("Pick a language below, then select or install a version.")
                                     .font(DMTypography.caption)
@@ -147,7 +147,7 @@ struct DashboardView: View {
     }
 
     private let shellConfig = """
-    # DevManager - Development Environment Manager
+    # RuntimePilot - Development Environment Manager
     for env_file in ~/.config/devmanager/*_env.sh; do
         [ -f "$env_file" ] && source "$env_file"
     done

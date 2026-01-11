@@ -1,4 +1,4 @@
-# DevManager
+# RuntimePilot
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2013.0+-blue" alt="Platform">
@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
-**DevManager** 是一个原生 macOS 应用，为 **Java / Node.js / Python / Go** 提供统一的运行时版本管理界面。  
+**RuntimePilot** 是一个原生 macOS 应用，为 **Java / Node.js / Python / Go** 提供统一的运行时版本管理界面。  
 通过单一 UI 发现已安装的运行时，快速切换版本，并将选定的版本配置到你的 Shell 环境中。
 
 ## ✨ 特性
@@ -65,7 +65,7 @@
 - 支持复制路径、在 Finder 中显示等上下文操作
 
 ### 🐚 Shell 集成
-- DevManager **不直接修改**你的 Shell 配置文件
+- RuntimePilot **不直接修改**你的 Shell 配置文件
 - 为每种语言生成小型 `*_env.sh` 脚本，存放于 `~/.config/devmanager/`
 - 只需在 Shell 配置中 source 这些文件一次，应用切换版本时会自动更新它们
 
@@ -95,15 +95,15 @@ swift run
 ```
 
 构建完成后：
-- App 包：`.build/release/DevManager.app`
-- DMG 镜像：`DevManager-1.0.0.dmg`
+- App 包：`.build/release/RuntimePilot.app`
+- DMG 镜像：`RuntimePilot-0.0.1.dmg`
 
 ## ⚙️ Shell 配置（一次性设置）
 
 将以下内容添加到你的 Shell 配置文件（如 `~/.zshrc` 或 `~/.bash_profile`）：
 
 ```bash
-# DevManager - Development Environment Manager
+# RuntimePilot - Development Environment Manager
 for env_file in ~/.config/devmanager/*_env.sh; do
     [ -f "$env_file" ] && source "$env_file"
 done
@@ -133,14 +133,14 @@ source ~/.zshrc
 
 或者打开一个新的终端窗口。
 
-之后，每当你在 DevManager 中点击 **Use** 切换版本，对应的 `*_env.sh` 文件就会更新，新的 Shell 会话将使用选定的版本。
+之后，每当你在 RuntimePilot 中点击 **Use** 切换版本，对应的 `*_env.sh` 文件就会更新，新的 Shell 会话将使用选定的版本。
 
 ## 🏗️ 项目结构
 
 ```
-DevManager/
-├── Sources/DevManager/
-│   ├── DevManagerApp.swift      # 应用入口，注册所有语言管理器
+RuntimePilot/
+├── Sources/RuntimePilot/
+│   ├── RuntimePilotApp.swift    # 应用入口，注册所有语言管理器
 │   ├── ContentView.swift        # 主视图，NavigationSplitView 布局
 │   ├── DashboardView.swift      # Dashboard 仪表板视图
 │   ├── DashboardViewModel.swift # Dashboard 视图模型
@@ -189,7 +189,7 @@ DevManager/
 1. 创建新的版本模型，实现 `LanguageVersion` 协议
 2. 创建新的管理器，实现 `LanguageManager` 协议
 3. 在 `LanguageMetadata` 中添加新语言的元数据
-4. 在 `DevManagerApp.swift` 中注册新语言
+4. 在 `RuntimePilotApp.swift` 中注册新语言
 
 ## 📄 License
 
