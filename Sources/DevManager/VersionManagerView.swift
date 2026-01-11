@@ -176,6 +176,7 @@ struct VersionManagerSheet: View {
     @State private var showToast = false
     @State private var toastMessage = ""
     @State private var toastIsSuccess = true
+    @State private var refreshId = UUID()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -294,13 +295,13 @@ struct VersionManagerSheet: View {
                                         showToast = true
                                         toastMessage = "Added to download queue"
                                         toastIsSuccess = true
-                                        
+
                                         // Auto hide toast
                                         Task {
                                             try? await Task.sleep(nanoseconds: 3_000_000_000)
                                             showToast = false
                                         }
-                                        
+
                                         // Refresh versions
                                         Task {
                                             await viewModel.fetchVersions()
@@ -313,16 +314,18 @@ struct VersionManagerSheet: View {
                                                 version: version)
                                             if success {
                                                 showToast = true
-                                                toastMessage = "\(version.displayName) uninstalled successfully"
+                                                toastMessage =
+                                                    "\(version.displayName) uninstalled successfully"
                                                 toastIsSuccess = true
                                                 await viewModel.fetchVersions()
                                                 onComplete()
                                             } else {
                                                 showToast = true
-                                                toastMessage = "Failed to uninstall \(version.displayName)"
+                                                toastMessage =
+                                                    "Failed to uninstall \(version.displayName)"
                                                 toastIsSuccess = false
                                             }
-                                            
+
                                             // Auto hide toast
                                             Task {
                                                 try? await Task.sleep(nanoseconds: 3_000_000_000)
@@ -358,8 +361,10 @@ struct VersionManagerSheet: View {
             DispatchQueue.main.async {
                 isSearchFocused = true
             }
+            // 每次 sheet 打开时生成新的 refreshId，强制重新获取版本
+            refreshId = UUID()
         }
-        .task {
+        .task(id: refreshId) {
             await viewModel.fetchVersions()
         }
     }
@@ -523,14 +528,14 @@ struct ToastView: View {
     let message: String
     let isSuccess: Bool
     @Binding var isShowing: Bool
-    
+
     var body: some View {
         if isShowing {
             HStack(spacing: 12) {
                 Image(systemName: isSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
                     .foregroundColor(isSuccess ? .green : .red)
                     .font(.system(size: 20))
-                
+
                 Text(message)
                     .font(.callout)
                     .fontWeight(.medium)
