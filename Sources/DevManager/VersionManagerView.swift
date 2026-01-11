@@ -79,32 +79,15 @@ class VersionInstallViewModel: ObservableObject {
         }
     }
 
-    func install(version: RemoteVersion) async -> Bool {
-        isInstalling = true
-        installingFormula = version.formula
-        currentOperation = "Installing \(version.displayName)..."
-        installProgress = ""
-        downloadProgress = nil
-        operationResult = nil
-        currentStage = .downloading
-
-        let success = await BrewService.shared.install(formula: version.formula) { output in
-            self.processOutput(output)
-        }
-
-        isInstalling = false
-        installingFormula = nil
-        currentOperation = nil
-        currentStage = .idle
-
-        if success {
-            operationResult = .success("\(version.displayName) installed successfully")
-        } else {
-            operationResult = .failure(
-                "Failed to install \(version.displayName). Check the log for details.")
-        }
-
-        return success
+    func install(version: RemoteVersion) {
+        // 使用 DownloadManager 处理安装
+        _ = DownloadManager.shared.addTask(
+            languageType: language,
+            version: version.version,
+            formula: version.formula,
+            displayName: version.displayName
+        )
+        operationResult = .success("Added to download queue")
     }
 
     func uninstall(version: RemoteVersion) async -> Bool {
@@ -188,9 +171,11 @@ struct VersionManagerSheet: View {
     let onDismiss: () -> Void
     let onComplete: () -> Void
 
-    @State private var showProgress = false
     @State private var searchText = ""
     @FocusState private var isSearchFocused: Bool
+    @State private var showToast = false
+    @State private var toastMessage = ""
+    @State private var toastIsSuccess = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -305,23 +290,43 @@ struct VersionManagerSheet: View {
                                         == version.formula,
                                     accent: viewModel.accentColor,
                                     onInstall: {
+                                        viewModel.install(version: version)
+                                        showToast = true
+                                        toastMessage = "Added to download queue"
+                                        toastIsSuccess = true
+                                        
+                                        // Auto hide toast
                                         Task {
-                                            showProgress = true
-                                            let success = await viewModel.install(version: version)
-                                            if success {
-                                                await viewModel.fetchVersions()
-                                                onComplete()
-                                            }
+                                            try? await Task.sleep(nanoseconds: 3_000_000_000)
+                                            showToast = false
+                                        }
+                                        
+                                        // Refresh versions
+                                        Task {
+                                            await viewModel.fetchVersions()
+                                            onComplete()
                                         }
                                     },
                                     onUninstall: {
                                         Task {
-                                            showProgress = true
                                             let success = await viewModel.uninstall(
                                                 version: version)
                                             if success {
+                                                showToast = true
+                                                toastMessage = "\(version.displayName) uninstalled successfully"
+                                                toastIsSuccess = true
                                                 await viewModel.fetchVersions()
                                                 onComplete()
+                                            } else {
+                                                showToast = true
+                                                toastMessage = "Failed to uninstall \(version.displayName)"
+                                                toastIsSuccess = false
+                                            }
+                                            
+                                            // Auto hide toast
+                                            Task {
+                                                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                                                showToast = false
                                             }
                                         }
                                     }
@@ -332,121 +337,23 @@ struct VersionManagerSheet: View {
                     }
                 }
 
-                // 操作进度区域
-                if viewModel.isInstalling || showProgress || viewModel.operationResult != nil {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            // 操作结果提示
-                            if let result = viewModel.operationResult {
-                                switch result {
-                                case .success(let message):
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.green)
-                                        Text(message)
-                                            .font(.callout)
-                                            .fontWeight(.medium)
-                                            .foregroundColor(.green)
-                                    }
-                                case .failure(let message):
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.red)
-                                        Text(message)
-                                            .font(.callout)
-                                            .fontWeight(.medium)
-                                            .foregroundColor(.red)
-                                    }
-                                }
-                            }
-
-                            Spacer()
-                            Button {
-                                showProgress = false
-                                viewModel.installProgress = ""
-                                viewModel.clearResult()
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(viewModel.isInstalling)
-                            .accessibilityLabel("Close progress")
-                        }
-
-                        if let operation = viewModel.currentOperation {
-                            HStack(spacing: 8) {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                Text(operation)
-                                    .font(.callout)
-                                    .fontWeight(.medium)
-                            }
-                        }
-
-                        // 下载进度条
-                        if let progress = viewModel.downloadProgress {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(
-                                        viewModel.currentStage.rawValue.isEmpty
-                                            ? "Downloading..." : viewModel.currentStage.rawValue
-                                    )
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text(String(format: "%.1f%%", progress))
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
-                                }
-
-                                ProgressView(value: progress, total: 100)
-                                    .progressViewStyle(.linear)
-                                    .tint(viewModel.accentColor)
-                                    .frame(height: 6)
-                            }
-                        }
-
-                        // 日志输出
-                        if !viewModel.installProgress.isEmpty {
-                            ScrollViewReader { proxy in
-                                ScrollView {
-                                    Text(viewModel.installProgress)
-                                        .font(.system(.caption, design: .monospaced))
-                                        .foregroundColor(.secondary)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .id("bottom")
-                                }
-                                .onChange(of: viewModel.installProgress) { _ in
-                                    withAnimation {
-                                        proxy.scrollTo("bottom", anchor: .bottom)
-                                    }
-                                }
-                            }
-                            .frame(minHeight: 60, maxHeight: 120)
-                            .padding(12)
-                            .background(Color(NSColor.textBackgroundColor).opacity(0.5))
-                            .cornerRadius(8)
-                        }
-                    }
-                    .padding(20)
-                    .frame(minHeight: 120, maxHeight: 200)
-                    .background(.ultraThinMaterial)
-                    .overlay(
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(height: 1),
-                        alignment: .top
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
             }
         }
         .frame(minWidth: 750, idealWidth: 800, minHeight: 550, idealHeight: 650)
-        .animation(.easeInOut(duration: 0.3), value: viewModel.isInstalling)
-        .animation(.easeInOut(duration: 0.3), value: showProgress)
+        .overlay(
+            // Toast notification
+            Group {
+                if showToast {
+                    ToastView(
+                        message: toastMessage,
+                        isSuccess: toastIsSuccess,
+                        isShowing: $showToast
+                    )
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: showToast),
+            alignment: .bottom
+        )
         .onAppear {
             DispatchQueue.main.async {
                 isSearchFocused = true
@@ -606,6 +513,36 @@ struct ManageVersionsButton: View {
                 onDismiss: { showSheet = false },
                 onComplete: { onRefresh() }
             )
+        }
+    }
+}
+
+// MARK: - Toast View
+
+struct ToastView: View {
+    let message: String
+    let isSuccess: Bool
+    @Binding var isShowing: Bool
+    
+    var body: some View {
+        if isShowing {
+            HStack(spacing: 12) {
+                Image(systemName: isSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    .foregroundColor(isSuccess ? .green : .red)
+                    .font(.system(size: 20))
+                
+                Text(message)
+                    .font(.callout)
+                    .fontWeight(.medium)
+                    .foregroundColor(isSuccess ? .green : .red)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial)
+            .cornerRadius(10)
+            .shadow(color: Color.black.opacity(0.1), radius: 10, y: 4)
+            .padding(.bottom, 20)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
 }

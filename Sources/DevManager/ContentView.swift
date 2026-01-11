@@ -51,6 +51,7 @@ enum NavigationItem: String, CaseIterable, Identifiable {
 struct ContentView: View {
     @ObservedObject var registry: LanguageRegistry
     @StateObject private var dashboardViewModel: DashboardViewModel
+    @StateObject private var downloadManager = DownloadManager.shared
 
     enum Route: Hashable {
         case dashboard
@@ -65,7 +66,11 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
+        VStack(spacing: 0) {
+            // Global Download Notification
+            GlobalDownloadNotification(manager: downloadManager)
+                
+            NavigationSplitView {
             List(selection: $selection) {
                 Section {
                     // Dashboard
@@ -74,7 +79,7 @@ struct ContentView: View {
                             Image(systemName: "chart.bar.horizontal.fill")
                                 .font(.system(size: 16))
                                 .frame(width: 20, height: 20)
-
+    
                             Text("Dashboard")
                                 .font(.body)
                                 .fontWeight(.medium)
@@ -87,7 +92,7 @@ struct ContentView: View {
                                 .fill(
                                     selection == .dashboard ? Color.blue.opacity(0.15) : Color.clear
                                 )
-
+    
                             if selection == .dashboard {
                                 HStack {
                                     Rectangle()
@@ -99,7 +104,7 @@ struct ContentView: View {
                         }
                     )
                     .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
-
+    
                     // 语言项
                     ForEach(registry.allLanguages) { language in
                         let metadata = language.metadata
@@ -114,7 +119,7 @@ struct ContentView: View {
                                         .aspectRatio(contentMode: .fit)
                                         .frame(width: 20, height: 20)
                                 }
-
+    
                                 Text(metadata.displayName)
                                     .font(.body)
                                     .fontWeight(.medium)
@@ -127,7 +132,7 @@ struct ContentView: View {
                                     .fill(
                                         selection == .language(metadata.id)
                                             ? metadata.color.opacity(0.15) : Color.clear)
-
+    
                                 if selection == .language(metadata.id) {
                                     HStack {
                                         Rectangle()
@@ -165,7 +170,7 @@ struct ContentView: View {
                     metadata: language.metadata,
                     manager: language.manager
                 )
-                .id(languageId)  // 强制在语言切换时重建视图，确保 @StateObject 重新初始化
+                .id(languageId)  // 强制在语言切换时重建视图,确保 @StateObject 重新初始化
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "app.dashed")
@@ -180,5 +185,6 @@ struct ContentView: View {
         }
         .frame(minWidth: 800, idealWidth: 1200, minHeight: 600, idealHeight: 800)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 }
