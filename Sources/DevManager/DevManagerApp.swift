@@ -1,5 +1,17 @@
 import SwiftUI
 
+// MARK: - App Version
+
+enum AppInfo {
+    static var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
+    }
+
+    static var build: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+    }
+}
+
 @main
 struct DevManagerApp: App {
     @StateObject private var javaManager = JavaManager()
@@ -39,7 +51,7 @@ struct DevManagerApp: App {
                     NSApplication.shared.orderFrontStandardAboutPanel(
                         options: [
                             .applicationName: "DevManager",
-                            .applicationVersion: "1.0.0",
+                            .applicationVersion: AppInfo.version,
                             .credits: NSAttributedString(string: "Development Environment Manager"),
                         ]
                     )
